@@ -12,6 +12,7 @@ from astrbot.api import logger
 from astrbot.core.config.astrbot_config import AstrBotConfig
 from astrbot.core.star.context import Context
 from astrbot.core.star.star_tools import StarTools
+from astrbot.core.utils.astrbot_path import get_astrbot_plugin_path
 
 
 class ConfigNode:
@@ -127,7 +128,7 @@ class PluginConfig(ConfigNode):
         self.context = context
 
         self.data_dir = StarTools.get_data_dir(self._plugin_name)
-        self.plugin_dir = self.data_dir
+        self.plugin_dir = Path(get_astrbot_plugin_path()) / self._plugin_name
 
         # 规范化缓存路径
         self.cache.path = self.normalize_path(self.cache.path)
