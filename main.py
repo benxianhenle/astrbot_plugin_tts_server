@@ -43,9 +43,7 @@ class TTSServerPlugin(Star):
     async def initialize(self):
         """插件初始化"""
         if self.cfg.enabled:
-            # 预加载角色列表
-            self._roles_cache = await self.client.get_roles()
-            logger.info(f"[TTS Plugin] 已加载 {len(self._roles_cache)} 个角色")
+            logger.info("[TTS Plugin] 插件已初始化，角色列表将在需要时获取")
 
     async def terminate(self):
         """插件终止"""
@@ -217,18 +215,29 @@ class TTSServerPlugin(Star):
         角色列表 - 显示可用角色列表
         """
         if not self.cfg.enabled:
+            yield event.plain_result("插件未启用，请在配置中启用插件")
             return
-
-        # 刷新角色列表
-        self._roles_cache = await self.client.get_roles(force_refresh=True)
-
-        if not self._roles_cache:
-            yield event.plain_result("无法获取角色列表，请检查配置")
+            
+        # 检查API Key是否配置
+        if not self.cfg.client.api_key:
+            yield event.plain_result("API Key未配置，请先在插件配置中填写API Key")
             return
+            
+        try:
+            # 刷新角色列表
+            self._roles_cache = await self.client.get_roles(force_refresh=True)
+            
+            if not self._roles_cache:
+                yield event.plain_result("无法获取角色列表，可能原因：\n1. API Key无效或已过期\n2. 网络连接问题\n3. 服务器暂时不可用\n请检查配置后重试")
+                return
 
-        role_names = [f"• {role.name}" for role in self._roles_cache]
-        text = "可用角色列表（从API获取）:\n" + "\n".join(role_names)
-        yield event.plain_result(text)
+            role_names = [f"• {role.name}" for role in self._roles_cache]
+            text = f"可用角色列表（共{len(self._roles_cache)}个角色）:\n" + "\n".join(role_names)
+            yield event.plain_result(text)
+            
+        except Exception as e:
+            logger.error(f"[TTS Plugin] 获取角色列表异常: {e}")
+            yield event.plain_result(f"获取角色列表时发生错误: {str(e)}")
 
     @filter.command("参考音频", alias={"refs", "音频"})
     async def on_refs_command(self, event: AstrMessageEvent):
@@ -237,23 +246,76 @@ class TTSServerPlugin(Star):
         用法: /参考音频 霄宫
         """
         if not self.cfg.enabled:
+            yield event.plain_result("插件未启用，请在配置中启用插件")
+            return
+            
+        # 检查API Key是否配置
+        if not self.cfg.client.api_key:
+            yield event.plain_result("API Key未配置，请先在插件配置中填写API Key")
             return
 
         role_name = event.message_str.partition(" ")[2].strip()
         if not role_name:
             yield event.plain_result("请提供角色名称，例如：/参考音频 霄宫")
             return
+            
+        try:
+            # 获取参考音频列表
+            refs = await self.client.get_role_references(role_name, force_refresh=True)
 
-        # 获取参考音频列表
-        refs = await self.client.get_role_references(role_name, force_refresh=True)
+            if not refs:
+                yield event.plain_result(f"角色 '{role_name}' 没有可用的参考音频，或角色名称不正确")
+                return
 
-        if not refs:
-            yield event.plain_result(f"角色 '{role_name}' 没有可用的参考音频")
+            ref_names = [f"• {ref.name} ({ref.file_name})" for ref in refs]
+            text = f"角色 '{role_name}' 的参考音频（共{len(refs)}个）:\n" + "\n".join(ref_names)
+            yield event.plain_result(text)
+            
+        except Exception as e:
+            logger.error(f"[TTS Plugin] 获取参考音频列表异常: {e}")
+            yield event.plain_result(f"获取参考音频列表时发生错误: {str(e)}")
+
+    @filter.command("测试TTS连接", alias={"test-tts", "tts-test"})
+    async def on_test_connection(self, event: AstrMessageEvent):
+        """
+        测试TTS连接 - 测试API Key有效性并获取角色列表
+        用法: /测试TTS连接
+        """
+        if not self.cfg.enabled:
+            yield event.plain_result("插件未启用，请在配置中启用插件")
             return
-
-        ref_names = [f"• {ref.name} ({ref.file_name})" for ref in refs]
-        text = f"角色 '{role_name}' 的参考音频:\n" + "\n".join(ref_names)
-        yield event.plain_result(text)
+            
+        # 检查API Key是否配置
+        if not self.cfg.client.api_key:
+            yield event.plain_result("API Key未配置，请先在插件配置中填写API Key")
+            return
+            
+        try:
+            yield event.plain_result("正在测试TTS服务器连接...")
+            
+            # 测试获取角色列表
+            roles = await self.client.get_roles(force_refresh=True)
+            
+            if roles:
+                self._roles_cache = roles
+                role_names = [f"• {role.name}" for role in roles]
+                text = f"✅ 连接成功！\n已获取到 {len(roles)} 个角色：\n" + "\n".join(role_names)
+                yield event.plain_result(text)
+                
+                # 可选：获取第一个角色的参考音频作为进一步测试
+                if roles:
+                    first_role = roles[0]
+                    refs = await self.client.get_role_references(first_role.name, force_refresh=True)
+                    if refs:
+                        yield event.plain_result(f"角色 '{first_role.name}' 有 {len(refs)} 个参考音频，连接完全正常。")
+                    else:
+                        yield event.plain_result(f"角色 '{first_role.name}' 暂无参考音频，但基本连接正常。")
+            else:
+                yield event.plain_result("❌ 连接失败：无法获取角色列表\n可能原因：\n1. API Key无效或已过期\n2. 网络连接问题\n3. 服务器暂时不可用\n请检查配置后重试")
+                
+        except Exception as e:
+            logger.error(f"[TTS Plugin] 测试连接异常: {e}")
+            yield event.plain_result(f"❌ 连接测试失败: {str(e)}")
 
     @filter.command("TTS缓存")
     async def on_cache_command(self, event: AstrMessageEvent):
@@ -261,6 +323,7 @@ class TTSServerPlugin(Star):
         TTS缓存 - 显示缓存统计信息
         """
         if not self.cfg.enabled:
+            yield event.plain_result("插件未启用，请在配置中启用插件")
             return
 
         stats = self.cache.get_stats()
@@ -278,6 +341,7 @@ class TTSServerPlugin(Star):
         清除TTS缓存 - 清除所有缓存文件
         """
         if not self.cfg.enabled:
+            yield event.plain_result("插件未启用，请在配置中启用插件")
             return
 
         count = self.cache.clear()
