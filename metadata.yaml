@@ -1,0 +1,17 @@
+name: astrbot_plugin_tts_server
+desc: 通过API调用远程TTS服务器进行语音合成，支持角色选择和参考音频切换
+help: |
+  语音合成插件，通过API调用远程TTS服务器。
+  
+  可用命令：
+  - /说 <文本> - 直接合成语音
+  - /角色列表 - 显示可用角色
+  - /参考音频 <角色名> - 显示角色的参考音频
+  - /TTS缓存 - 显示缓存统计
+  - /清除TTS缓存 - 清除缓存
+  
+  情绪配置：
+  可在配置中设置多套情绪参数，通过触发词自动匹配不同角色和参考音频。
+version: v1.0.0
+author: benxianhenl
+repo: https://github.com/benxianhenl/astrbot_plugin_tts_server
