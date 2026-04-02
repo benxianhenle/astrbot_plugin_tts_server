@@ -103,7 +103,7 @@
 | 配置项 | 说明 | 示例值 |
 |--------|------|--------|
 | **client.base_url** | TTS 服务器 API 地址 | `https://benxianhenl.cn/api/proxy` |
-| **client.api_key** | 从网站获取的 API Key | `p3yrvkgvmAVqDH0ZOfLNbNfWDSQ3J5nzhfgJc1MzXBU` |
+| **client.api_key** | 从网站获取的 API Key | `your-api-key-here` |
 | **client.timeout** | 请求超时时间（秒） | `60` |
 | **default_params.role** | 默认角色名称 | `霄宫` |
 | **default_params.reference** | 默认参考音频文件名 | `【默认】哇，你做点心的手艺很不一般啊！去祭典上摆摊的话，肯定会成为最热门的那一个吧！.wav` |

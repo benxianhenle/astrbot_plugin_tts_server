@@ -127,7 +127,7 @@ class PluginConfig(ConfigNode):
         self.context = context
 
         self.data_dir = StarTools.get_data_dir(self._plugin_name)
-        self.plugin_dir = Path(context.get_plugin_path()) / self._plugin_name
+        self.plugin_dir = self.data_dir
 
         # 规范化缓存路径
         self.cache.path = self.normalize_path(self.cache.path)

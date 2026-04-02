@@ -289,7 +289,7 @@ class TTSServerPlugin(Star):
         用语音输出要讲的话
         
         Args:
-            message: 要讲的话
+            message(str): 要讲的话
         """
         try:
             if not message:
