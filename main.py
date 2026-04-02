@@ -43,7 +43,18 @@ class TTSServerPlugin(Star):
     async def initialize(self):
         """插件初始化"""
         if self.cfg.enabled:
-            logger.info("[TTS Plugin] 插件已初始化，角色列表将在需要时获取")
+            logger.info("[TTS Plugin] 插件已初始化，正在尝试获取角色列表...")
+            # 检查API Key是否配置
+            if self.cfg.client.api_key:
+                try:
+                    # 预加载角色列表
+                    self._roles_cache = await self.client.get_roles()
+                    logger.info(f"[TTS Plugin] 已加载 {len(self._roles_cache)} 个角色")
+                except Exception as e:
+                    logger.warning(f"[TTS Plugin] 初始化时获取角色列表失败: {e}")
+                    logger.info("[TTS Plugin] 角色列表将在需要时获取")
+            else:
+                logger.info("[TTS Plugin] API Key未配置，角色列表将在需要时获取")
 
     async def terminate(self):
         """插件终止"""
@@ -95,6 +106,36 @@ class TTSServerPlugin(Star):
             language = self.cfg.default_params.language
         if speed_factor is None:
             speed_factor = self.cfg.default_params.speed_factor
+            
+        # 验证角色是否存在
+        if role:
+            # 如果缓存为空，尝试获取角色列表
+            if not self._roles_cache:
+                try:
+                    self._roles_cache = await self.client.get_roles(force_refresh=False)
+                except Exception:
+                    self._roles_cache = []
+            
+            # 检查角色是否在缓存中
+            role_exists = any(r.name == role for r in self._roles_cache) if self._roles_cache else False
+            
+            if not role_exists and self._roles_cache is not None:
+                # 尝试刷新角色列表
+                try:
+                    self._roles_cache = await self.client.get_roles(force_refresh=True)
+                    role_exists = any(r.name == role for r in self._roles_cache) if self._roles_cache else False
+                except Exception:
+                    role_exists = False
+                    
+            if not role_exists:
+                # 获取可用角色列表
+                role_names = [r.name for r in self._roles_cache] if self._roles_cache else []
+                error_msg = f"角色 '{role}' 不存在。"
+                if role_names:
+                    error_msg += f" 可用角色: {', '.join(role_names)}"
+                else:
+                    error_msg += " 无法获取角色列表，请检查API Key配置或使用 /角色列表 命令查看可用角色。"
+                return TTSRequestResult(ok=False, error=error_msg, text=text)
 
         # 检查缓存
         cached_data = self.cache.get(

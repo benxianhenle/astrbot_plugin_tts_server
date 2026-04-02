@@ -78,13 +78,13 @@
             "role": {
                 "description": "默认角色",
                 "type": "string",
-                "hint": "从网站获取的角色名称",
+                "hint": "从网站获取的角色名称，使用 /角色列表 命令查看可用角色",
                 "default": ""
             },
             "reference": {
                 "description": "默认参考音频文件名",
                 "type": "string",
-                "hint": "从网站获取的参考音频文件名",
+                "hint": "从网站获取的参考音频文件名，使用 /参考音频 <角色名> 命令查看角色的可用参考音频",
                 "default": ""
             },
             "language": {
