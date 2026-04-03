@@ -4,9 +4,16 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path, PureWindowsPath
-from types import UnionType
 from typing import Any, Union, get_args, get_origin, get_type_hints
+
+# Python 3.10+ 支持 UnionType，低版本需要回退
+if sys.version_info >= (3, 10):
+    from types import UnionType
+else:
+    # 对于 Python 3.9 及以下版本，使用 typing.Union 作为替代
+    UnionType = type(Union)
 
 from astrbot.api import logger
 from astrbot.core.config.astrbot_config import AstrBotConfig
