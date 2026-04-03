@@ -346,19 +346,19 @@ class TTSServerPlugin(Star):
         if streaming_mode is None:
             streaming_mode = getattr(self.cfg.default_params, "streaming_mode", False)
         if top_k is None:
-            top_k = self.cfg.advanced_params.top_k
+            top_k = getattr(self.cfg.advanced_params, "top_k", 15)
         if top_p is None:
-            top_p = self.cfg.advanced_params.top_p
+            top_p = getattr(self.cfg.advanced_params, "top_p", 1.0)
         if temperature is None:
-            temperature = self.cfg.advanced_params.temperature
+            temperature = getattr(self.cfg.advanced_params, "temperature", 1.0)
         if text_split_method is None:
-            text_split_method = self.cfg.advanced_params.text_split_method
+            text_split_method = getattr(self.cfg.advanced_params, "text_split_method", "cut2")
         if repetition_penalty is None:
-            repetition_penalty = self.cfg.advanced_params.repetition_penalty
+            repetition_penalty = getattr(self.cfg.advanced_params, "repetition_penalty", 1.35)
         if sample_steps is None:
-            sample_steps = self.cfg.advanced_params.sample_steps
+            sample_steps = getattr(self.cfg.advanced_params, "sample_steps", 32)
         if seed is None:
-            seed = self.cfg.advanced_params.seed
+            seed = getattr(self.cfg.advanced_params, "seed", -1)
         
         # 处理voice字段（优先级最高）
         if voice is not None and voice != "":

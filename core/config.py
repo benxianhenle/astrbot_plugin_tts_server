@@ -104,6 +104,17 @@ class DefaultParamsConfig(ConfigNode):
     voice: str
     language: str
     speed_factor: float
+    streaming_mode: bool
+
+
+class AdvancedParamsConfig(ConfigNode):
+    top_k: int
+    top_p: float
+    temperature: float
+    text_split_method: str
+    repetition_penalty: float
+    sample_steps: int
+    seed: int
 
 
 class CacheConfig(ConfigNode):
@@ -117,6 +128,7 @@ class PluginConfig(ConfigNode):
     auto: AutoConfig
     client: ClientConfig
     default_params: DefaultParamsConfig
+    advanced_params: AdvancedParamsConfig
     cache: CacheConfig
     emotion: list[dict[str, Any]]
 
@@ -125,6 +137,31 @@ class PluginConfig(ConfigNode):
     def __init__(self, cfg: AstrBotConfig, context: Context):
         super().__init__(cfg)
         self.context = context
+
+        # 确保advanced_params存在（向后兼容）
+        if "advanced_params" not in self._data:
+            self._data["advanced_params"] = {}
+        
+        # 为advanced_params设置默认值（向后兼容）
+        advanced_params_data = self._data["advanced_params"]
+        advanced_defaults = {
+            "top_k": 15,
+            "top_p": 1.0,
+            "temperature": 1.0,
+            "text_split_method": "cut2",
+            "repetition_penalty": 1.35,
+            "sample_steps": 32,
+            "seed": -1
+        }
+        for key, default_value in advanced_defaults.items():
+            if key not in advanced_params_data:
+                advanced_params_data[key] = default_value
+        
+        # 确保default_params中有streaming_mode（向后兼容）
+        default_params_data = self._data.get("default_params", {})
+        if "streaming_mode" not in default_params_data:
+            default_params_data["streaming_mode"] = False
+            self._data["default_params"] = default_params_data
 
         self.data_dir = StarTools.get_data_dir(self._plugin_name)
         self.plugin_dir = Path(get_astrbot_plugin_path()) / self._plugin_name
