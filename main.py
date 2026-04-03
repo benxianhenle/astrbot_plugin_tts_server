@@ -95,28 +95,38 @@ class TTSServerPlugin(Star):
         if self.cfg.enabled:
             logger.info("[TTS Plugin] 插件已初始化，正在尝试获取角色列表...")
             
-            # 1. 尝试动态生成配置schema
-            if self.cfg.client.api_key:
-                try:
-                    logger.info("[TTS Plugin] 正在生成动态配置schema...")
-                    success = await self._generate_schema_via_subprocess()
-                    
-                    if success:
-                        logger.info("[TTS Plugin] 动态配置schema生成成功")
-                    else:
-                        logger.warning("[TTS Plugin] 动态配置schema生成失败，将使用静态schema")
-                except Exception as e:
-                    logger.warning(f"[TTS Plugin] 生成动态schema时出错: {e}")
-            
-            # 2. 预加载角色列表（用于插件内部验证）
+            # 1. 预加载角色列表（用于插件内部验证和schema生成）
             if self.cfg.client.api_key:
                 try:
                     # 预加载角色列表
                     self._roles_cache = await self.client.get_roles()
                     logger.info(f"[TTS Plugin] 已加载 {len(self._roles_cache)} 个角色")
+                    
+                    # 2. 尝试动态生成配置schema（使用已获取的角色数据）
+                    try:
+                        logger.info("[TTS Plugin] 正在生成动态配置schema...")
+                        success = await self._generate_schema_via_subprocess()
+                        
+                        if success:
+                            logger.info("[TTS Plugin] 动态配置schema生成成功")
+                        else:
+                            logger.warning("[TTS Plugin] 动态配置schema生成失败，将使用静态schema")
+                    except Exception as e:
+                        logger.warning(f"[TTS Plugin] 生成动态schema时出错: {e}")
+                        
                 except Exception as e:
                     logger.warning(f"[TTS Plugin] 初始化时获取角色列表失败: {e}")
                     logger.info("[TTS Plugin] 角色列表将在需要时获取")
+                    
+                    # 即使获取角色失败，也尝试生成schema（脚本可能有缓存）
+                    if self.cfg.client.api_key:
+                        try:
+                            logger.info("[TTS Plugin] 尝试使用缓存生成schema...")
+                            success = await self._generate_schema_via_subprocess()
+                            if success:
+                                logger.info("[TTS Plugin] 使用缓存生成了schema")
+                        except Exception as schema_error:
+                            logger.warning(f"[TTS Plugin] 生成schema失败: {schema_error}")
             else:
                 logger.info("[TTS Plugin] API Key未配置，角色列表将在需要时获取")
 
