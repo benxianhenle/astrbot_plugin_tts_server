@@ -179,7 +179,14 @@ class TTSServerClient:
         reference: str,
         language: str = "zh",
         speed_factor: float = 1.0,
-        streaming_mode: bool = False
+        streaming_mode: bool = False,
+        top_k: int = 15,
+        top_p: float = 1.0,
+        temperature: float = 1.0,
+        text_split_method: str = "cut2",
+        repetition_penalty: float = 1.35,
+        sample_steps: int = 32,
+        seed: int = -1
     ) -> TTSRequestResult:
         """
         提交推理任务
@@ -191,6 +198,13 @@ class TTSServerClient:
             language: 语言
             speed_factor: 语速倍数
             streaming_mode: 是否流式模式
+            top_k: top_k采样
+            top_p: top_p采样
+            temperature: 温度参数
+            text_split_method: 文本分割方法
+            repetition_penalty: 重复惩罚
+            sample_steps: 采样步数
+            seed: 随机种子
             
         Returns:
             包含task_id的结果
@@ -203,7 +217,14 @@ class TTSServerClient:
                 "reference": reference,
                 "language": language,
                 "speed_factor": speed_factor,
-                "streaming_mode": streaming_mode
+                "streaming_mode": streaming_mode,
+                "top_k": top_k,
+                "top_p": top_p,
+                "temperature": temperature,
+                "text_split_method": text_split_method,
+                "repetition_penalty": repetition_penalty,
+                "sample_steps": sample_steps,
+                "seed": seed
             }
 
             async with self.session.post(url, headers=self._get_headers(), json=payload) as resp:
@@ -289,6 +310,14 @@ class TTSServerClient:
         reference: str,
         language: str = "zh",
         speed_factor: float = 1.0,
+        streaming_mode: bool = False,
+        top_k: int = 15,
+        top_p: float = 1.0,
+        temperature: float = 1.0,
+        text_split_method: str = "cut2",
+        repetition_penalty: float = 1.35,
+        sample_steps: int = 32,
+        seed: int = -1,
         max_retries: int = 60,
         retry_interval: float = 2.0
     ) -> TTSRequestResult:
@@ -301,6 +330,14 @@ class TTSServerClient:
             reference: 参考音频文件名
             language: 语言
             speed_factor: 语速倍数
+            streaming_mode: 是否流式模式
+            top_k: top_k采样
+            top_p: top_p采样
+            temperature: 温度参数
+            text_split_method: 文本分割方法
+            repetition_penalty: 重复惩罚
+            sample_steps: 采样步数
+            seed: 随机种子
             max_retries: 最大重试次数
             retry_interval: 重试间隔（秒）
             
@@ -315,7 +352,15 @@ class TTSServerClient:
             role=role,
             reference=reference,
             language=language,
-            speed_factor=speed_factor
+            speed_factor=speed_factor,
+            streaming_mode=streaming_mode,
+            top_k=top_k,
+            top_p=top_p,
+            temperature=temperature,
+            text_split_method=text_split_method,
+            repetition_penalty=repetition_penalty,
+            sample_steps=sample_steps,
+            seed=seed
         )
         
         if not submit_result.ok:

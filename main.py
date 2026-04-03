@@ -304,7 +304,15 @@ class TTSServerPlugin(Star):
         reference: str = None,
         language: str = None,
         speed_factor: float = None,
-        voice: str = None
+        voice: str = None,
+        streaming_mode: bool = None,
+        top_k: int = None,
+        top_p: float = None,
+        temperature: float = None,
+        text_split_method: str = None,
+        repetition_penalty: float = None,
+        sample_steps: int = None,
+        seed: int = None
     ) -> TTSRequestResult:
         """
         执行TTS
@@ -316,6 +324,14 @@ class TTSServerPlugin(Star):
             language: 语言（可选，使用默认配置）
             speed_factor: 语速倍数（可选，使用默认配置）
             voice: 角色和参考音频组合，格式"角色 | 参考音频文件名"（可选，优先级高于role和reference）
+            streaming_mode: 是否流式模式（可选，使用默认配置）
+            top_k: top_k采样（可选，使用默认配置）
+            top_p: top_p采样（可选，使用默认配置）
+            temperature: 温度参数（可选，使用默认配置）
+            text_split_method: 文本分割方法（可选，使用默认配置）
+            repetition_penalty: 重复惩罚（可选，使用默认配置）
+            sample_steps: 采样步数（可选，使用默认配置）
+            seed: 随机种子（可选，使用默认配置）
             
         Returns:
             TTS请求结果
@@ -325,6 +341,24 @@ class TTSServerPlugin(Star):
             language = self.cfg.default_params.language
         if speed_factor is None:
             speed_factor = self.cfg.default_params.speed_factor
+        
+        # 高级参数配置
+        if streaming_mode is None:
+            streaming_mode = getattr(self.cfg.default_params, "streaming_mode", False)
+        if top_k is None:
+            top_k = self.cfg.advanced_params.top_k
+        if top_p is None:
+            top_p = self.cfg.advanced_params.top_p
+        if temperature is None:
+            temperature = self.cfg.advanced_params.temperature
+        if text_split_method is None:
+            text_split_method = self.cfg.advanced_params.text_split_method
+        if repetition_penalty is None:
+            repetition_penalty = self.cfg.advanced_params.repetition_penalty
+        if sample_steps is None:
+            sample_steps = self.cfg.advanced_params.sample_steps
+        if seed is None:
+            seed = self.cfg.advanced_params.seed
         
         # 处理voice字段（优先级最高）
         if voice is not None and voice != "":
@@ -417,7 +451,15 @@ class TTSServerPlugin(Star):
             role=role,
             reference=reference,
             language=language,
-            speed_factor=speed_factor
+            speed_factor=speed_factor,
+            streaming_mode=streaming_mode,
+            top_k=top_k,
+            top_p=top_p,
+            temperature=temperature,
+            text_split_method=text_split_method,
+            repetition_penalty=repetition_penalty,
+            sample_steps=sample_steps,
+            seed=seed
         )
 
         # 保存缓存
