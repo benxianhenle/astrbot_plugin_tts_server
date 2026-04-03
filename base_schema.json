@@ -1,0 +1,200 @@
+{
+    "enabled": {
+        "description": "总开关",
+        "type": "bool",
+        "hint": "TTS服务器插件总开关",
+        "default": true
+    },
+    "auto": {
+        "description": "调用配置",
+        "type": "object",
+        "hint": "本插件有一定概率主动将bot本来要发送的文本转成语音发送",
+        "items": {
+            "only_llm_result": {
+                "description": "只处理LLM结果",
+                "type": "bool",
+                "hint": "只处理 LLM 返回的消息。建议打开",
+                "default": true
+            },
+            "tts_prob": {
+                "description": "主动转语音发送的概率",
+                "type": "float",
+                "hint": "",
+                "slider": {
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.01
+                },
+                "default": 0.15
+            },
+            "max_msg_len": {
+                "description": "文本长度限制",
+                "type": "int",
+                "hint": "超过此长度的文本不会被转成语音发送",
+                "slider": {
+                    "min": 0,
+                    "max": 200,
+                    "step": 1
+                },
+                "default": 50
+            }
+        }
+    },
+    "client": {
+        "description": "客户端配置",
+        "type": "object",
+        "hint": "",
+        "items": {
+            "base_url": {
+                "description": "TTS服务器 API 的 URL",
+                "type": "string",
+                "hint": "必填！例如 https://benxianhenl.cn/api/proxy",
+                "default": "https://benxianhenl.cn/api/proxy"
+            },
+            "api_key": {
+                "description": "API Key",
+                "type": "string",
+                "hint": "从网站获取的API Key",
+                "default": ""
+            },
+            "timeout": {
+                "description": "请求超时时间",
+                "hint": "单位为秒",
+                "type": "int",
+                "slider": {
+                    "min": 30,
+                    "max": 180,
+                    "step": 1
+                },
+                "default": 60
+            }
+        }
+    },
+    "default_params": {
+        "description": "TTS默认参数",
+        "type": "object",
+        "hint": "这些参数将用于每次语音合成请求",
+        "items": {
+            "role": {
+                "description": "默认角色",
+                "type": "string",
+                "hint": "从网站获取的角色名称，使用 /角色列表 命令查看可用角色",
+                "options": [],
+                "labels": [],
+                "default": ""
+            },
+            "reference": {
+                "description": "默认参考音频文件名",
+                "type": "string",
+                "hint": "从网站获取的参考音频文件名，使用 /参考音频 <角色名> 命令查看角色的可用参考音频",
+                "default": ""
+            },
+            "language": {
+                "description": "文本语言",
+                "type": "string",
+                "hint": "要转化的文本的语言",
+                "options": [
+                    "zh",
+                    "en",
+                    "ja"
+                ],
+                "labels": [
+                    "中文",
+                    "英语",
+                    "日语"
+                ],
+                "default": "zh"
+            },
+            "speed_factor": {
+                "description": "语速倍数",
+                "type": "float",
+                "hint": "1.0 为原速",
+                "slider": {
+                    "min": 0.5,
+                    "max": 2.0,
+                    "step": 0.1
+                },
+                "default": 1.0
+            }
+        }
+    },
+    "cache": {
+        "description": "缓存配置",
+        "type": "object",
+        "hint": "",
+        "items": {
+            "enabled": {
+                "description": "启用语音缓存",
+                "hint": "开启后，请求参数一致时直接复用本地缓存音频，减少重复推理",
+                "type": "bool",
+                "default": true
+            },
+            "expire_hours": {
+                "description": "缓存过期时间(h)",
+                "hint": "单位为小时。 0 表示永不过期",
+                "type": "int",
+                "slider": {
+                    "min": 0,
+                    "max": 240,
+                    "step": 1
+                },
+                "default": 0
+            },
+            "path": {
+                "description": "缓存路径",
+                "hint": "请使用正斜杠分隔路径，支持绝对路径和相对路径",
+                "type": "string",
+                "default": "data/plugins_data/astrbot_plugin_tts_server/audio"
+            }
+        }
+    },
+    "emotion": {
+        "description": "情绪参数配置",
+        "type": "template_list",
+        "hint": "可自定义多套情绪参数，并定义对应触发词",
+        "templates": {
+            "default": {
+                "name": "情绪条目",
+                "items": {
+                    "name": {
+                        "description": "情绪名",
+                        "type": "string",
+                        "hint": "用于查询与显示，请确保名称唯一",
+                        "default": "请输入情绪名"
+                    },
+                    "keywords": {
+                        "description": "触发词",
+                        "type": "list",
+                        "hint": "AI回复词中含有列表中的任一关键词时, 将使用此套的情绪参数",
+                        "default": []
+                    },
+                    "role": {
+                        "description": "角色名称",
+                        "type": "string",
+                        "hint": "从网站获取的角色名称",
+                        "options": [],
+                        "labels": [],
+                        "default": ""
+                    },
+                    "reference": {
+                        "description": "参考音频文件名",
+                        "type": "string",
+                        "hint": "从网站获取的参考音频文件名",
+                        "default": ""
+                    },
+                    "speed_factor": {
+                        "description": "语速倍数",
+                        "type": "float",
+                        "hint": "1.0 为原速",
+                        "slider": {
+                            "min": 0.5,
+                            "max": 2,
+                            "step": 0.1
+                        },
+                        "default": 1
+                    }
+                }
+            }
+        }
+    }
+}

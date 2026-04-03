@@ -17,6 +17,14 @@ from .core.config import PluginConfig
 from .core.emotion import EmotionManager
 from .core.cache import CacheManager
 
+# Schema生成脚本导入
+try:
+    from scripts.generate_schema import SchemaGenerator
+    SCHEMA_GEN_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"[TTS Plugin] 无法导入SchemaGenerator: {e}")
+    SCHEMA_GEN_AVAILABLE = False
+
 
 class TTSServerPlugin(Star):
     """TTS服务器插件主类"""
@@ -44,7 +52,28 @@ class TTSServerPlugin(Star):
         """插件初始化"""
         if self.cfg.enabled:
             logger.info("[TTS Plugin] 插件已初始化，正在尝试获取角色列表...")
-            # 检查API Key是否配置
+            
+            # 1. 尝试动态生成配置schema（如果可用）
+            if SCHEMA_GEN_AVAILABLE and self.cfg.client.api_key:
+                try:
+                    logger.info("[TTS Plugin] 正在生成动态配置schema...")
+                    generator = SchemaGenerator(
+                        base_url=self.cfg.client.base_url,
+                        api_key=self.cfg.client.api_key
+                    )
+                    
+                    # 在后台线程中运行schema生成（避免阻塞）
+                    import asyncio
+                    success = await asyncio.to_thread(generator.generate_schema)
+                    
+                    if success:
+                        logger.info("[TTS Plugin] 动态配置schema生成成功")
+                    else:
+                        logger.warning("[TTS Plugin] 动态配置schema生成失败，将使用静态schema")
+                except Exception as e:
+                    logger.warning(f"[TTS Plugin] 生成动态schema时出错: {e}")
+            
+            # 2. 预加载角色列表（用于插件内部验证）
             if self.cfg.client.api_key:
                 try:
                     # 预加载角色列表
