@@ -12,6 +12,6 @@ help: |
   
   情绪配置：
   可在配置中设置多套情绪参数，通过触发词自动匹配不同角色和参考音频。
-version: v1.0.0
+version: v1.01
 author: benxianhenl
 repo: https://github.com/benxianhenl/astrbot_plugin_tts_server
