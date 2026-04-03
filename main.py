@@ -89,6 +89,91 @@ class TTSServerPlugin(Star):
         except Exception as e:
             logger.warning(f"[TTS Plugin] 执行schema生成脚本时出错: {e}")
             return False
+    
+    async def _generate_schema_from_cache(self):
+        """
+        使用已缓存的数据生成schema
+        避免重复API调用，使用插件已获取的角色和参考音频数据
+        """
+        import json
+        import os
+        
+        plugin_dir = os.path.dirname(__file__)
+        base_schema_path = os.path.join(plugin_dir, "base_schema.json")
+        output_schema_path = os.path.join(plugin_dir, "_conf_schema.json")
+        
+        if not os.path.exists(base_schema_path):
+            logger.warning(f"[TTS Plugin] 基础schema模板不存在: {base_schema_path}")
+            return False
+        
+        try:
+            # 读取基础schema模板
+            with open(base_schema_path, "r", encoding="utf-8") as f:
+                schema = json.load(f)
+            
+            # 构建选项列表
+            options = []
+            
+            # 如果已有角色缓存，使用缓存数据
+            if self._roles_cache:
+                logger.info(f"[TTS Plugin] 使用 {len(self._roles_cache)} 个缓存角色生成schema选项")
+                
+                for role in self._roles_cache:
+                    role_name = role.name
+                    
+                    # 获取角色的参考音频
+                    try:
+                        references = await self.client.get_role_references(role_name)
+                        if references:
+                            for ref in references:
+                                # 使用file_name或name作为音频标识
+                                audio_name = ref.file_name or ref.name or "默认音频"
+                                options.append(f"{role_name} | {audio_name}")
+                        else:
+                            # 如果没有参考音频，添加默认选项
+                            options.append(f"{role_name} | 默认音频")
+                    except Exception as e:
+                        logger.warning(f"[TTS Plugin] 获取角色'{role_name}'的参考音频失败: {e}")
+                        options.append(f"{role_name} | 默认音频")
+            else:
+                logger.warning("[TTS Plugin] 角色缓存为空，无法生成选项")
+                options = ["默认角色 | 默认音频"]
+            
+            # 如果没有选项，使用默认
+            if not options:
+                logger.warning("[TTS Plugin] 无法生成角色和参考音频选项，使用默认选项")
+                options = ["默认角色 | 默认音频"]
+            
+            # 更新schema中的voice字段
+            if "default_params" in schema and "items" in schema["default_params"]:
+                items = schema["default_params"]["items"]
+                if "voice" in items:
+                    items["voice"]["options"] = options
+                    items["voice"]["labels"] = options
+                    # 更新提示信息
+                    hint = f"从网站获取的角色和参考音频组合（已加载 {len(options)} 个组合，修改API Key后需重启插件刷新）"
+                    items["voice"]["hint"] = hint
+            
+            # 更新情绪配置中的voice字段（如果有）
+            if "emotion" in schema and "templates" in schema["emotion"]:
+                templates = schema["emotion"]["templates"]
+                if "default" in templates and "items" in templates["default"]:
+                    emotion_items = templates["default"]["items"]
+                    if "voice" in emotion_items:
+                        emotion_items["voice"]["options"] = options
+                        emotion_items["voice"]["labels"] = options
+            
+            # 写入最终schema
+            with open(output_schema_path, "w", encoding="utf-8") as f:
+                json.dump(schema, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"[TTS Plugin] 已生成配置schema，包含 {len(options)} 个组合选项")
+            logger.info(f"[TTS Plugin] 输出文件: {output_schema_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[TTS Plugin] 生成schema失败: {e}")
+            return False
 
     async def initialize(self):
         """插件初始化"""
@@ -105,14 +190,27 @@ class TTSServerPlugin(Star):
                     # 2. 尝试动态生成配置schema（使用已获取的角色数据）
                     try:
                         logger.info("[TTS Plugin] 正在生成动态配置schema...")
-                        success = await self._generate_schema_via_subprocess()
+                        success = await self._generate_schema_from_cache()
                         
                         if success:
                             logger.info("[TTS Plugin] 动态配置schema生成成功")
                         else:
-                            logger.warning("[TTS Plugin] 动态配置schema生成失败，将使用静态schema")
+                            logger.warning("[TTS Plugin] 动态配置schema生成失败，尝试使用脚本...")
+                            # 如果新方法失败，回退到旧方法
+                            script_success = await self._generate_schema_via_subprocess()
+                            if script_success:
+                                logger.info("[TTS Plugin] 脚本生成schema成功")
+                            else:
+                                logger.warning("[TTS Plugin] 所有schema生成方法都失败，将使用静态schema")
                     except Exception as e:
                         logger.warning(f"[TTS Plugin] 生成动态schema时出错: {e}")
+                        # 出错时也尝试使用脚本
+                        try:
+                            script_success = await self._generate_schema_via_subprocess()
+                            if script_success:
+                                logger.info("[TTS Plugin] 脚本生成schema成功")
+                        except Exception as script_error:
+                            logger.warning(f"[TTS Plugin] 脚本生成schema也失败: {script_error}")
                         
                 except Exception as e:
                     logger.warning(f"[TTS Plugin] 初始化时获取角色列表失败: {e}")
@@ -121,10 +219,18 @@ class TTSServerPlugin(Star):
                     # 即使获取角色失败，也尝试生成schema（脚本可能有缓存）
                     if self.cfg.client.api_key:
                         try:
-                            logger.info("[TTS Plugin] 尝试使用缓存生成schema...")
-                            success = await self._generate_schema_via_subprocess()
+                            logger.info("[TTS Plugin] 尝试生成schema...")
+                            # 先尝试使用缓存方法
+                            success = await self._generate_schema_from_cache()
+                            if not success:
+                                # 如果失败，尝试脚本
+                                logger.info("[TTS Plugin] 缓存方法失败，尝试脚本...")
+                                success = await self._generate_schema_via_subprocess()
+                            
                             if success:
-                                logger.info("[TTS Plugin] 使用缓存生成了schema")
+                                logger.info("[TTS Plugin] 生成了schema")
+                            else:
+                                logger.warning("[TTS Plugin] 所有schema生成方法都失败")
                         except Exception as schema_error:
                             logger.warning(f"[TTS Plugin] 生成schema失败: {schema_error}")
             else:

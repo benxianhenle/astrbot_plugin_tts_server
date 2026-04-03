@@ -58,28 +58,46 @@ class SchemaGenerator:
             response.raise_for_status()
             
             data = response.json()
+            self.log_info(f"API响应数据类型: {type(data)}")
+            self.log_info(f"API响应数据: {json.dumps(data, ensure_ascii=False)[:500]}...")
+            
             roles_data = data.get("roles", [])
+            self.log_info(f"找到 {len(roles_data)} 个角色数据项")
             
             # 解析角色和参考音频
             result = {}
-            for role in roles_data:
+            for idx, role in enumerate(roles_data):
+                self.log_info(f"解析第 {idx+1} 个角色: {role}")
                 if isinstance(role, dict):
                     role_name = role.get("name", "")
                     if not role_name:
+                        self.log_warning(f"角色数据缺少name字段: {role}")
                         continue
                     
                     refs = []
-                    for ref in role.get("references", []):
+                    references = role.get("references", [])
+                    self.log_info(f"角色 '{role_name}' 有 {len(references)} 个参考音频")
+                    
+                    for ref_idx, ref in enumerate(references):
+                        self.log_info(f"解析第 {ref_idx+1} 个参考音频: {ref}")
                         if isinstance(ref, dict):
                             file_name = ref.get("file_name", "")
                             if file_name:
                                 refs.append(file_name)
+                            else:
+                                self.log_warning(f"参考音频缺少file_name字段: {ref}")
+                        else:
+                            self.log_warning(f"参考音频不是字典类型: {type(ref)}")
                     
                     if refs:
                         result[role_name] = refs
+                        self.log_info(f"角色 '{role_name}' 添加了 {len(refs)} 个参考音频")
                     else:
                         # 如果没有参考音频，至少添加角色
                         result[role_name] = []
+                        self.log_info(f"角色 '{role_name}' 没有参考音频，仅添加角色")
+                else:
+                    self.log_warning(f"角色数据不是字典类型: {type(role)}")
             
             self.log_info(f"成功获取 {len(result)} 个角色")
             total_refs = sum(len(refs) for refs in result.values())
