@@ -226,6 +226,8 @@ class TTSServerClient:
                 "sample_steps": sample_steps,
                 "seed": seed
             }
+            
+            logger.info(f"[TTS Client] 提交推理任务: url={url}, role={role}, reference={reference}")
 
             async with self.session.post(url, headers=self._get_headers(), json=payload) as resp:
                 if resp.status != 200:
@@ -236,9 +238,13 @@ class TTSServerClient:
                 data = await resp.json()
                 task_id = data.get("task_id")
                 
+                logger.info(f"[TTS Client] 提交推理任务响应: {data}")
+                
                 if not task_id:
-                    return TTSRequestResult(ok=False, error="未获取到task_id", text=text)
+                    logger.error(f"[TTS Client] 未获取到task_id, 响应: {data}")
+                    return TTSRequestResult(ok=False, error=f"未获取到task_id, 响应: {data}", text=text)
 
+                logger.info(f"[TTS Client] 获取到task_id: {task_id}")
                 return TTSRequestResult(ok=True, text=text, error=task_id)  # 用error字段临时存储task_id
 
         except ClientError as e:
@@ -346,6 +352,8 @@ class TTSServerClient:
         """
         import asyncio
         
+        logger.info(f"[TTS Client] infer_and_download 开始: role={role}, reference={reference}")
+        
         # 提交任务
         submit_result = await self.submit_infer_task(
             text=text,
@@ -364,9 +372,11 @@ class TTSServerClient:
         )
         
         if not submit_result.ok:
+            logger.error(f"[TTS Client] 提交任务失败: {submit_result.error}")
             return submit_result
         
         task_id = submit_result.error  # task_id存储在error字段中
+        logger.info(f"[TTS Client] 任务提交成功, task_id={task_id}")
         
         # 轮询任务状态
         for i in range(max_retries):
@@ -375,18 +385,24 @@ class TTSServerClient:
             status = await self.get_task_status(task_id)
             status_code = status.get("status")
             
+            logger.info(f"[TTS Client] 轮询任务状态 [{i+1}/{max_retries}]: {status_code}")
+            
             if status_code == "completed":
                 # 任务完成，下载音频
+                logger.info(f"[TTS Client] 任务完成，开始下载音频")
                 return await self.download_audio(task_id)
             elif status_code == "failed":
+                error_msg = status.get("message", "任务执行失败")
+                logger.error(f"[TTS Client] 任务失败: {error_msg}")
                 return TTSRequestResult(
                     ok=False,
-                    error=status.get("message", "任务执行失败"),
+                    error=error_msg,
                     text=text
                 )
             # 继续轮询
         
         # 超时
+        logger.error(f"[TTS Client] 等待任务完成超时")
         return TTSRequestResult(
             ok=False,
             error="等待任务完成超时",
