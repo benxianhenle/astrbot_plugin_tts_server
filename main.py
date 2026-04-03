@@ -434,15 +434,24 @@ class TTSServerPlugin(Star):
                     error_msg += " 无法获取角色列表，请检查API Key配置或使用 /角色列表 命令查看可用角色。"
                 return TTSRequestResult(ok=False, error=error_msg, text=text)
 
-        # 检查缓存
+        # 检查缓存（包含所有微调参数）
         cached_data = self.cache.get(
             text=text,
             role=role,
             reference=reference,
             language=language,
-            speed_factor=speed_factor
+            speed_factor=speed_factor,
+            streaming_mode=streaming_mode,
+            top_k=top_k,
+            top_p=top_p,
+            temperature=temperature,
+            text_split_method=text_split_method,
+            repetition_penalty=repetition_penalty,
+            sample_steps=sample_steps,
+            seed=seed
         )
         if cached_data:
+            logger.debug(f"[TTS Plugin] 缓存命中，参数: role={role}, reference={reference}, language={language}, speed_factor={speed_factor}")
             return TTSRequestResult(ok=True, data=cached_data, text=text)
 
         # 提交推理任务并等待结果
@@ -462,16 +471,28 @@ class TTSServerPlugin(Star):
             seed=seed
         )
 
-        # 保存缓存
+        # 保存缓存（包含所有微调参数）
         if result.ok:
-            self.cache.set(
+            success = self.cache.set(
                 data=result.data,
                 text=text,
                 role=role,
                 reference=reference,
                 language=language,
-                speed_factor=speed_factor
+                speed_factor=speed_factor,
+                streaming_mode=streaming_mode,
+                top_k=top_k,
+                top_p=top_p,
+                temperature=temperature,
+                text_split_method=text_split_method,
+                repetition_penalty=repetition_penalty,
+                sample_steps=sample_steps,
+                seed=seed
             )
+            if success:
+                logger.debug(f"[TTS Plugin] 已保存缓存，参数: role={role}, reference={reference}, size={len(result.data) if result.data else 0} bytes")
+            else:
+                logger.warning("[TTS Plugin] 保存缓存失败")
 
         return result
 
@@ -479,55 +500,78 @@ class TTSServerPlugin(Star):
     async def on_decorating_result(self, event: AstrMessageEvent):
         """消息装饰器 - 自动将文本转为语音"""
         if not self.cfg.enabled:
+            logger.debug("[TTS Plugin] 插件未启用")
             return
 
         cfg = self.cfg.auto
+        logger.debug(f"[TTS Plugin] 装饰器检查: enabled={self.cfg.enabled}, only_llm_result={cfg.only_llm_result}, tts_prob={cfg.tts_prob}, max_msg_len={cfg.max_msg_len}")
+        
         result = event.get_result()
         if not result:
+            logger.debug("[TTS Plugin] 无结果，跳过")
             return
 
         chain = result.chain
         if not chain:
+            logger.debug("[TTS Plugin] 无消息链，跳过")
             return
 
         # 只处理LLM结果
         if cfg.only_llm_result and not result.is_llm_result():
+            logger.debug(f"[TTS Plugin] 非LLM结果被跳过 (only_llm_result={cfg.only_llm_result}, is_llm_result={result.is_llm_result()})")
             return
 
         # 按概率触发
-        if random.random() > cfg.tts_prob:
+        rand_val = random.random()
+        if rand_val > cfg.tts_prob:
+            logger.debug(f"[TTS Plugin] 概率触发跳过 (random={rand_val:.3f} > tts_prob={cfg.tts_prob})")
             return
+        else:
+            logger.debug(f"[TTS Plugin] 概率触发通过 (random={rand_val:.3f} <= tts_prob={cfg.tts_prob})")
 
         # 收集所有Plain文本片段
         plain_texts = []
         for seg in chain:
             if isinstance(seg, Plain):
                 plain_texts.append(seg.text)
+        
+        logger.debug(f"[TTS Plugin] 消息链分析: 总段数={len(chain)}, Plain段数={len(plain_texts)}")
 
         # 仅允许只含有Plain的消息链通过
         if len(plain_texts) != len(chain):
+            logger.debug(f"[TTS Plugin] 消息链包含非Plain内容，跳过 (plain_texts={len(plain_texts)}, chain={len(chain)})")
             return
 
         # 合并所有Plain文本
         combined_text = "\n".join(plain_texts)
+        logger.debug(f"[TTS Plugin] 合并文本: 长度={len(combined_text)}, 内容前50字符: {combined_text[:50]}{'...' if len(combined_text) > 50 else ''}")
 
         # 仅允许一定长度以下的文本通过
         if len(combined_text) > cfg.max_msg_len:
+            logger.debug(f"[TTS Plugin] 文本长度超过限制: {len(combined_text)} > {cfg.max_msg_len}")
             return
+        else:
+            logger.debug(f"[TTS Plugin] 文本长度检查通过: {len(combined_text)} <= {cfg.max_msg_len}")
 
         # 获取情绪参数
         emotion_params = self._get_emotion_params(combined_text)
+        logger.debug(f"[TTS Plugin] 情绪参数: {emotion_params}")
         
         # 执行TTS
+        logger.debug("[TTS Plugin] 开始执行TTS...")
         res = await self._do_tts(combined_text, **emotion_params)
         
         if not bool(res):
             logger.warning(f"[TTS Plugin] TTS失败: {res.error}")
             return
+        else:
+            logger.debug(f"[TTS Plugin] TTS成功: 音频大小={len(res.data) if res.data else 0} bytes")
 
         # 替换消息链为语音
+        logger.debug("[TTS Plugin] 替换消息链为语音")
         chain.clear()
         chain.append(self._to_record(res))
+        logger.debug("[TTS Plugin] 语音转换完成")
 
     @filter.command("说", alias={"tts", "TTS"})
     async def on_say_command(self, event: AstrMessageEvent):
