@@ -98,9 +98,12 @@ class TTSServerClient:
                 data = await resp.json()
                 roles = []
                 for role_data in data.get("roles", []):
+                    # 优先使用role_id和role_name，兼容旧格式的id和name
+                    role_id = role_data.get("role_id") or role_data.get("id", "")
+                    role_name = role_data.get("role_name") or role_data.get("name", "")
                     roles.append(RoleInfo(
-                        id=role_data.get("id", ""),
-                        name=role_data.get("name", ""),
+                        id=role_id,
+                        name=role_name,
                         description=role_data.get("description", "")
                     ))
                 
@@ -143,12 +146,18 @@ class TTSServerClient:
                 
                 # 查找指定角色的参考音频
                 for role_data in data.get("roles", []):
-                    if role_data.get("name") == role_name:
+                    # 使用与get_roles()相同的逻辑获取角色名
+                    current_role_name = role_data.get("role_name") or role_data.get("name", "")
+                    if current_role_name == role_name:
                         for ref_data in role_data.get("references", []):
+                            # 优先使用reference_id，兼容旧格式的id
+                            ref_id = ref_data.get("reference_id") or ref_data.get("id", "")
+                            # file_name字段可能不存在，使用name作为file_name
+                            file_name = ref_data.get("file_name") or ref_data.get("name", "")
                             references.append(ReferenceAudioInfo(
-                                id=ref_data.get("id", ""),
+                                id=ref_id,
                                 name=ref_data.get("name", ""),
-                                file_name=ref_data.get("file_name", "")
+                                file_name=file_name
                             ))
                         break
                 
