@@ -111,7 +111,8 @@ class TTSServerPlugin(Star):
         role: str = None,
         reference: str = None,
         language: str = None,
-        speed_factor: float = None
+        speed_factor: float = None,
+        voice: str = None
     ) -> TTSRequestResult:
         """
         执行TTS
@@ -122,19 +123,60 @@ class TTSServerPlugin(Star):
             reference: 参考音频文件名（可选，使用默认配置）
             language: 语言（可选，使用默认配置）
             speed_factor: 语速倍数（可选，使用默认配置）
+            voice: 角色和参考音频组合，格式"角色 | 参考音频文件名"（可选，优先级高于role和reference）
             
         Returns:
             TTS请求结果
         """
         # 使用默认配置
-        if not role:
-            role = self.cfg.default_params.role
-        if not reference:
-            reference = self.cfg.default_params.reference
         if not language:
             language = self.cfg.default_params.language
         if speed_factor is None:
             speed_factor = self.cfg.default_params.speed_factor
+        
+        # 处理voice字段（优先级最高）
+        if voice is not None and voice != "":
+            # 解析voice字段
+            try:
+                if " | " in voice:
+                    role_from_voice, reference_from_voice = voice.split(" | ", 1)
+                    role = role_from_voice
+                    reference = reference_from_voice
+                else:
+                    # 格式不正确，清空role和reference
+                    role = ""
+                    reference = ""
+            except Exception:
+                role = ""
+                reference = ""
+        else:
+            # 如果没有提供voice，使用默认配置中的voice字段
+            default_voice = self.cfg.default_params.voice
+            if default_voice:
+                try:
+                    if " | " in default_voice:
+                        role_from_default, reference_from_default = default_voice.split(" | ", 1)
+                        if not role:
+                            role = role_from_default
+                        if not reference:
+                            reference = reference_from_default
+                    else:
+                        # 格式不正确，清空role和reference
+                        if not role:
+                            role = ""
+                        if not reference:
+                            reference = ""
+                except Exception:
+                    if not role:
+                        role = ""
+                    if not reference:
+                        reference = ""
+        
+        # 如果role和reference仍未设置，设置为空字符串
+        if role is None:
+            role = ""
+        if reference is None:
+            reference = ""
             
         # 验证角色是否存在
         if role:

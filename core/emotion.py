@@ -12,15 +12,26 @@ class EmotionEntry:
     def __init__(self, data: Dict[str, Any]):
         self.name = data.get("name", "")
         self.keywords = data.get("keywords", [])
-        self.role = data.get("role", "")
-        self.reference = data.get("reference", "")
         self.speed_factor = data.get("speed_factor", 1.0)
+        
+        # 处理voice字段（新格式）或role/reference字段（旧格式）
+        voice = data.get("voice", "")
+        if voice and " | " in voice:
+            try:
+                role_from_voice, reference_from_voice = voice.split(" | ", 1)
+                self.role = role_from_voice
+                self.reference = reference_from_voice
+            except Exception:
+                self.role = data.get("role", "")
+                self.reference = data.get("reference", "")
+        else:
+            self.role = data.get("role", "")
+            self.reference = data.get("reference", "")
     
     def to_params(self) -> Dict[str, Any]:
         """转换为API参数"""
         return {
-            "role": self.role,
-            "reference": self.reference,
+            "voice": f"{self.role} | {self.reference}" if self.role and self.reference else "",
             "speed_factor": self.speed_factor
         }
     

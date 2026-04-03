@@ -101,8 +101,7 @@ class ClientConfig(ConfigNode):
 
 
 class DefaultParamsConfig(ConfigNode):
-    role: str
-    reference: str
+    voice: str
     language: str
     speed_factor: float
 

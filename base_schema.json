@@ -75,18 +75,12 @@
         "type": "object",
         "hint": "这些参数将用于每次语音合成请求",
         "items": {
-            "role": {
-                "description": "默认角色",
+            "voice": {
+                "description": "选择角色音色（修改API Key后需重启插件刷新）",
                 "type": "string",
-                "hint": "从网站获取的角色名称，使用 /角色列表 命令查看可用角色",
+                "hint": "从网站获取的角色和参考音频组合",
                 "options": [],
                 "labels": [],
-                "default": ""
-            },
-            "reference": {
-                "description": "默认参考音频文件名",
-                "type": "string",
-                "hint": "从网站获取的参考音频文件名，使用 /参考音频 <角色名> 命令查看角色的可用参考音频",
                 "default": ""
             },
             "language": {
@@ -168,18 +162,12 @@
                         "hint": "AI回复词中含有列表中的任一关键词时, 将使用此套的情绪参数",
                         "default": []
                     },
-                    "role": {
-                        "description": "角色名称",
+                    "voice": {
+                        "description": "角色音色",
                         "type": "string",
-                        "hint": "从网站获取的角色名称",
+                        "hint": "从网站获取的角色和参考音频组合",
                         "options": [],
                         "labels": [],
-                        "default": ""
-                    },
-                    "reference": {
-                        "description": "参考音频文件名",
-                        "type": "string",
-                        "hint": "从网站获取的参考音频文件名",
                         "default": ""
                     },
                     "speed_factor": {
